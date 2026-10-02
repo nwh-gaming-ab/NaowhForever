@@ -63,7 +63,7 @@ local function Page(account)
 end
 local function Texts(e)
     local out = {}
-    for i = 3, #e.rows do
+    for i = 4, #e.rows do
         for _, cfg in ipairs(e.rows[i]) do if cfg.text ~= "" then out[#out + 1] = cfg.text end end
     end
     return out
@@ -90,21 +90,21 @@ end
 
 -- Swatches show for Custom and for nothing else.
 do
-    Check(#Page({}).rows == 1, "no swatches for the default theme")
+    Check(#Page({}).rows == 2, "no swatches for the default theme: the Theme and Outlines rows only")
     for _, key in ipairs({ "midnight", "slate", "obsidian", "aubergine", "forest", "crimson", "rosenoir", "cottoncandy" }) do
         local e = Page({ themePreset = key })
-        Check(#e.rows == 1 and e.theme.getValue() == key, "no swatches for " .. key)
+        Check(#e.rows == 2 and e.theme.getValue() == key, "no swatches for " .. key)
     end
     for _, bad in ipairs({ "bogus", "order", 5 }) do
         local e = Page({ themePreset = bad })
-        Check(#e.rows == 1 and e.theme.getValue() == "", "an invalid preset reads as the default, no swatches")
+        Check(#e.rows == 2 and e.theme.getValue() == "", "an invalid preset reads as the default, no swatches")
     end
     local e = Page({ themePreset = "custom" })
-    Check(#e.rows == 5, "Custom shows the Start From row and three swatch rows")
-    Check(e.rows[2][1].text == "Start From" and e.rows[2][1].type == "dropdown", "the Start From dropdown")
+    Check(#e.rows == 6, "Custom adds the Start From row and three swatch rows")
+    Check(e.rows[3][1].text == "Start From" and e.rows[3][1].type == "dropdown", "the Start From dropdown")
     Check(table.concat(Texts(e), ",") == "Background,Panels,Borders & Lines,Text,Secondary Text,Accent",
         "the six swatches, in order")
-    for i = 3, 5 do
+    for i = 4, 6 do
         for _, cfg in ipairs(e.rows[i]) do
             if cfg.text ~= "" then Check(cfg.type == "colorpicker" and cfg.hasAlpha == false, cfg.text .. " is a swatch") end
         end
@@ -119,7 +119,7 @@ do
     e.theme.setValue("midnight")
     Check(a.themePreset == "midnight" and e.refreshes == 1 and #e.confirms == 0, "a preset is stored and the page redraws")
     e.build()
-    Check(#e.notes == 1 and e.notes[1] == HINT and #e.rows == 1, "the hint shows, still no swatches")
+    Check(#e.notes == 1 and e.notes[1] == HINT and #e.rows == 2, "the hint shows, still no swatches")
     e.theme.setValue("")
     e.build()
     Check(a.themePreset == nil and #e.notes == 1, "the default is stored as nothing, and the hint stays")
@@ -132,8 +132,8 @@ do
     e.theme.setValue("custom")
     Check(a.themePreset == "custom" and a.themeColors.bg.r == 0x12 / 255, "Custom is prefilled from the selected preset")
     e.build()
-    Check(#e.rows == 5 and #e.notes == 1, "the swatches appear once Custom is selected")
-    local bg = e.rows[3][1]
+    Check(#e.rows == 6 and #e.notes == 1, "the swatches appear once Custom is selected")
+    local bg = e.rows[4][1]
     local r = bg.getValue()
     Check(r == 0x12 / 255, "the swatch shows the prefilled color")
 end
@@ -142,7 +142,7 @@ end
 do
     local a = { themePreset = "custom", themeColors = { bg = { r = 0.1, g = 0.1, b = 0.1 } } }
     local e = Page(a)
-    local swatch = e.rows[3][1]
+    local swatch = e.rows[4][1]
     Check(#e.notes == 0, "no hint before a swatch changes")
     for i = 1, 50 do swatch.setValue(i / 50, 0, 0) end
     Check(e.refreshes == 1, "only the first tick redraws the page")
@@ -156,7 +156,7 @@ end
 do
     local a = { themePreset = "custom", themeColors = { bg = { r = 1, g = 0, b = 0 } } }
     local e = Page(a)
-    local start = e.rows[2][1]
+    local start = e.rows[3][1]
     Check(start.order[1] == "" and start.values[""] == "Choose a theme...", "the placeholder comes first")
     Check(start.order[2] == "default" and start.values.default == "Naowh (default)", "the default is offered")
     Check(#start.order == 10 and start.values.custom == nil, "the eight presets, and not Custom itself")
@@ -248,6 +248,29 @@ do
     Check(#frames == 10 and Shown() == 8 and #painted == 8 and painted[8][1] == 0.25, "more colors build only the missing chips and show them all")
     Check(Build(function() return List(3, 1) end) and #frames == 5 and Shown() == 3, "one chip per color from the start")
     Check(Build(function() return {} end) and #frames == 2 and Shown() == 0, "no colors, no chips")
+end
+
+-- Outlines: Black or Themed, for any theme.
+do
+    local a = {}
+    local e = Page(a)
+    local outlines = e.rows[2][1]
+    Check(outlines.type == "dropdown" and outlines.text == "Outlines", "an Outlines dropdown")
+    Check(outlines.values[""] == "Black" and outlines.values.themed == "Themed" and #outlines.order == 2, "Black or Themed")
+    Check(outlines.getValue() == "", "black by default")
+    for _, word in ipairs({ "1px outline", "icons and bars", "Saved for this computer", "Takes effect after a /reload" }) do
+        Check(outlines.tooltip:find(word, 1, true), "tooltip mentions " .. word)
+    end
+    outlines.setValue("themed")
+    Check(a.themeOutlines == "themed" and e.refreshes == 1 and #e.confirms == 0, "Themed is stored and the page redraws")
+    e.build()
+    Check(e.rows[2][1].getValue() == "themed" and #e.notes == 1 and e.notes[1] == HINT, "it reads back, and the hint shows")
+    e.rows[2][1].setValue("")
+    Check(a.themeOutlines == nil, "Black clears it")
+    a.themeOutlines = "junk"
+    e.build()
+    Check(e.rows[2][1].getValue() == "", "an unknown value reads as black")
+    Check(#Page({ themePreset = "midnight" }).rows == 2, "the Outlines row shows for presets too")
 end
 
 print("PASS custom colors page: " .. cases .. " checks")

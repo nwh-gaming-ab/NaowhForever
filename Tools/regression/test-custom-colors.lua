@@ -296,4 +296,35 @@ do
     Check(#Load(nil).ThemePalette("custom") == 6, "custom with no account table still gives six")
 end
 
+-- Outlines: the outline token is black until the player sets Themed, then it is the line.
+do
+    local ns, handler = Load({})
+    Check(Is(ns.THEME.outline, "000000"), "the outline is black by default")
+    Fire(handler, "ADDON_LOADED", "NaowhForever")
+    Check(Is(ns.THEME.outline, "000000") and rawequal(ns.ThemeTint("outline", "x"), "x"), "nothing applied: still black, literal kept")
+
+    ns, handler = Load({ themeOutlines = "themed" })
+    local outline = ns.THEME.outline
+    Fire(handler, "ADDON_LOADED", "NaowhForever")
+    Check(outline == ns.THEME.outline and Is(outline, SHIPPED.line), "themed: the default theme's line, in place")
+    Check(rawequal(ns.ThemeTint("outline", "x"), outline), "themed: ThemeTint returns the token")
+
+    for _, key in ipairs(ORDER) do
+        ns, handler = Load({ themePreset = key, themeOutlines = "themed" })
+        Fire(handler, "ADDON_LOADED", "NaowhForever")
+        Check(Is(ns.THEME.outline, PRESETS[key][4]), key .. ": themed outlines are the preset's line")
+    end
+
+    ns, handler = Load({ themePreset = "custom", themeOutlines = "themed",
+        themeColors = { line = { r = 0.2, g = 0.4, b = 0.6 } } })
+    Fire(handler, "ADDON_LOADED", "NaowhForever")
+    Check(ns.THEME.outline.r == 0.2 and ns.THEME.outline.g == 0.4 and ns.THEME.outline.b == 0.6, "custom: the picked line")
+
+    for _, bad in ipairs({ "black", "", 5, true, {} }) do
+        ns, handler = Load({ themePreset = "midnight", themeOutlines = bad })
+        Fire(handler, "ADDON_LOADED", "NaowhForever")
+        Check(Is(ns.THEME.outline, "000000"), "an unknown Outlines value stays black")
+    end
+end
+
 print("PASS custom colors: " .. cases .. " checks")

@@ -57,7 +57,7 @@ local QUESTION = 134400
 local RED = { r = 0.97, g = 0.27, b = 0.27 }
 local YELLOW = { r = 1, g = 0.85, b = 0.3 }
 local BLUE = { r = 0.35, g = 0.6, b = 1 }
-local ICON_BORDER = { r = 0, g = 0, b = 0 }
+local ICON_BORDER = ns.THEME.outline   -- black, or the theme's line when Outlines is Themed
 
 local others = {}             -- paladin name (realm when not ours) -> { classes, aura, known }
 local bar, cells, flyout, rows, auraButton, furyButton, keyNext, keyGreater, secureHandler

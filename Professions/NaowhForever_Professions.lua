@@ -71,7 +71,7 @@ local DIFFICULTY = {
     [3] = { r = 0.55, g = 0.55, b = 0.55 },
 }
 local TRIVIAL = 3   -- grey: no more skill from it
-local BLACK = { r = 0, g = 0, b = 0 }
+local BLACK = ns.THEME.outline   -- black, or the theme's line when Outlines is Themed
 local BAR_FROM = CreateColor(0x00 / 255, 0x4f / 255, 0x85 / 255, 1)
 local function StyleBar(bar)
     -- The dark end follows a changed accent; the shipped blue stays as it was otherwise.
@@ -97,7 +97,7 @@ local function CheckBox(parent)
     mark:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, 1)
     box:SetCheckedTexture(mark)
     box:SetScript("OnEnter", function() border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
-    box:SetScript("OnLeave", function() border:SetColor(0, 0, 0, 1) end)
+    box:SetScript("OnLeave", function() border:SetColor(BLACK.r, BLACK.g, BLACK.b, 1) end)
     return box
 end
 local STRATA = { "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG" }

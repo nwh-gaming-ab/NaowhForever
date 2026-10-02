@@ -126,7 +126,8 @@ local function StyleRow(row)
     if st == STYLES.dark then
         local c = ns.ThemeTint("bg", DARK_BG)
         row.bg:SetColorTexture(c.r, c.g, c.b, st.bg[4])
-        row.border:SetColor(unpack(st.edge))
+        local outline = ns.THEME.outline
+        row.border:SetColor(outline.r, outline.g, outline.b, st.edge[4])
     else
         local c, e = ns.ThemeTint("panel", LIGHT_BG), ns.ThemeTint("line", LIGHT_EDGE)
         row.bg:SetColorTexture(c.r, c.g, c.b, st.bg[4])

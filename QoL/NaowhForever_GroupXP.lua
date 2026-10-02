@@ -109,7 +109,7 @@ local function Row(i)
     row.bar:SetStatusBarColor(T.accent.r, T.accent.g, T.accent.b)
     row.bar:SetMinMaxValues(0, 1)
     ns.Solid(row.bar, "BACKGROUND", T.bg, 0.85):SetAllPoints()
-    ns.Border(row.bar, { r = 0, g = 0, b = 0 })
+    ns.Border(row.bar, ns.THEME.outline)
     row.text = ns.Font(row.bar, 11, "OUTLINE")
     row.text:SetPoint("CENTER")
     rows[i] = row

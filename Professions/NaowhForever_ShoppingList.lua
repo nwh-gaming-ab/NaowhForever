@@ -18,7 +18,7 @@ local ns = _G.NaowhForever
 local S = ns.ProfessionSettings
 local T = ns.THEME
 
-local BLACK = { r = 0, g = 0, b = 0 }
+local BLACK = ns.THEME.outline   -- black, or the theme's line when Outlines is Themed
 local RED = "|cffff4d4d"
 local WIDTH, ROW_H, TOP, MAX_ROWS = 420, 24, 36, 10
 local OVERPRICED = 1.25       -- a live price this far above the last scan is warned about

@@ -617,6 +617,19 @@ function ns.BuildSettingsPage(parent, y)
         -- What the selection looks like, before a reload.
         { type = "palette", text = "", colors = function() return ns.ThemePalette(ns.ThemePresetKey()) end }
     ); y = y - h
+    _, h = W:DualRow(parent, y,
+        { type = "dropdown", text = "Outlines", values = { [""] = "Black", themed = "Themed" },
+          order = { "", "themed" },
+          tooltip = "The 1px outline around buttons, boxes, panels and most icons and bars. "
+          .. "Saved for this computer.|n|nTakes effect after a /reload.",
+          getValue = function() return ns.AccountSettings().themeOutlines == "themed" and "themed" or "" end,
+          setValue = function(v)
+              ns.AccountSettings().themeOutlines = v == "themed" and "themed" or nil
+              colorsPending = true
+              UI:RefreshPage(true)
+          end },
+        { type = "label", text = "" }
+    ); y = y - h
     if CustomSelected() then
         -- An action, not a setting: it always reads "Choose a theme...", and picking one
         -- asks before it replaces the swatches below with that theme's colors.

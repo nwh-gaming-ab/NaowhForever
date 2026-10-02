@@ -62,8 +62,8 @@ function ns.BuildQoLBlessingsPage(parent, y)
     return y
 end
 
--- The house 1px black border, as on the bar.
-local ICON_BORDER = { r = 0, g = 0, b = 0 }
+-- The house 1px border, as on the bar: black, or the theme's line when Outlines is Themed.
+local ICON_BORDER = ns.THEME.outline
 
 local function NewCell(parent)
     local btn = CreateFrame("Button", nil, parent)

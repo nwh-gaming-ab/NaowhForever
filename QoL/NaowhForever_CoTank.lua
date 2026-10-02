@@ -165,7 +165,7 @@ local function InitButton(button)
     r.cooldown:SetReverse(true)
     r.cooldown:SetDrawEdge(false)
     r.cooldown:SetHideCountdownNumbers(true)
-    ns.Border(r.cooldown, { r = 0, g = 0, b = 0 })
+    ns.Border(r.cooldown, ns.THEME.outline)
 
     -- Plain white strips the engine shows and tints by dispel type; which aura gets them
     -- is secret, so that call is the engine's.
@@ -269,7 +269,7 @@ local function ShowPreviewDebuffs(show)
             icon.tex:SetAllPoints()
             icon.tex:SetTexture(path)
             icon.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-            ns.Border(icon, { r = 0, g = 0, b = 0 })
+            ns.Border(icon, ns.THEME.outline)
             host.icons[i] = icon
         end
         frame.previewDebuffs = host
@@ -311,7 +311,7 @@ local function Build()
     frame:SetAttribute("type1", "target")
     frame.bg = ns.Solid(frame, "BACKGROUND", T.bg, 1)
     frame.bg:SetAllPoints()
-    ns.Border(frame, { r = 0, g = 0, b = 0 })
+    ns.Border(frame, ns.THEME.outline)
 
     frame.bar = CreateFrame("StatusBar", nil, frame)
     frame.bar:SetPoint("TOPLEFT", 1, -1)

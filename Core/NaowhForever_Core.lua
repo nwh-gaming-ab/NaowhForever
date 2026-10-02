@@ -35,6 +35,9 @@ ns.THEME = {
     grey   = { r = 0x34 / 255, g = 0x37 / 255, b = 0x3d / 255 },  -- selected-row neutral fill
     accent     = { r = 0x00 / 255, g = 0x91 / 255, b = 0xed / 255 },
     accentSoft = { r = 0x4d / 255, g = 0xb5 / 255, b = 0xf5 / 255 },
+    -- The 1px outline round panels, buttons and boxes: black, or the line color when the
+    -- player sets Outlines to Themed. Not picked, so it has no swatch.
+    outline    = { r = 0, g = 0, b = 0 },
 }
 
 -- Theme presets for Settings > COLORS: the six tokens a player can change, per preset. The
@@ -158,13 +161,19 @@ end
 
 function ns.ApplyThemeColors()
     local source = ThemeSource()
-    if not source then return end
-    for _, key in ipairs(ns.THEME_EDITABLE) do
-        local r, g, b = Pick(source, key)
-        if r then Paint(key, r, g, b) end
+    if source then
+        for _, key in ipairs(ns.THEME_EDITABLE) do
+            local r, g, b = Pick(source, key)
+            if r then Paint(key, r, g, b) end
+        end
+        if themeShipped.accent then Paint("accentSoft", Lightened(ns.THEME.accent, 0.33)) end
+        if themeShipped.line then Paint("grey", Lightened(ns.THEME.line, 0.03)) end
     end
-    if themeShipped.accent then Paint("accentSoft", Lightened(ns.THEME.accent, 0.33)) end
-    if themeShipped.line then Paint("grey", Lightened(ns.THEME.line, 0.03)) end
+    -- Themed outlines take the line color, whichever theme that is.
+    if ns.AccountSettings().themeOutlines == "themed" then
+        local line = ns.THEME.line
+        Paint("outline", line.r, line.g, line.b)
+    end
     for key in pairs(colorPrefix) do colorPrefix[key] = nil end
 end
 
@@ -466,8 +475,9 @@ function ns.Solid(parent, layer, color, alpha)
     return t
 end
 
--- NaowhUI's 1px black border on buttons and input boxes, lit blue on hover.
-local BLACK = { r = 0, g = 0, b = 0 }
+-- NaowhUI's 1px border on buttons and input boxes, lit blue on hover: black, or the theme's
+-- line when Outlines is Themed (the token is changed in place before this is read).
+local BLACK = ns.THEME.outline
 
 -- btn.label is exposed so a reused button can be re-labelled on each open, and btn._onClick
 -- so it can be pointed at a new action.
@@ -662,7 +672,7 @@ function ns.NewEditBox(parent)
         local a = ns.THEME.accent
         box._border:SetColor(a.r, a.g, a.b, 1)
     end)
-    box:HookScript("OnLeave", function() box._border:SetColor(0, 0, 0, 1) end)
+    box:HookScript("OnLeave", function() box._border:SetColor(BLACK.r, BLACK.g, BLACK.b, 1) end)
     return box
 end
 

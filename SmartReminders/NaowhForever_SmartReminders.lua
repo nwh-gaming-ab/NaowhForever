@@ -627,7 +627,7 @@ local function CreateSlot(index)
     slot.icon:SetAllPoints()
     slot.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    ns.Border(slot, { r = 0, g = 0, b = 0 }, 1)
+    ns.Border(slot, ns.THEME.outline, 1)
 
     local T = ns.THEME
 

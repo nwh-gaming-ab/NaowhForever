@@ -110,7 +110,8 @@ local function Paint(f, entry, onGCD)
         f.glow:Hide()
         f.tex:SetDesaturated(false)
         f.tex:SetVertexColor(1, 1, 1)
-        f.border:SetColorTexture(0, 0, 0, 0.8)
+        local outline = ns.THEME.outline
+        f.border:SetColorTexture(outline.r, outline.g, outline.b, 0.8)
     end
 end
 

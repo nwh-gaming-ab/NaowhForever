@@ -148,7 +148,8 @@ local function Refresh()
             local r, g, bl = C_Item.GetItemQualityColor(quality)
             b.border:SetColor(r, g, bl)
         else
-            b.border:SetColor(0, 0, 0)
+            local o = ns.THEME.outline
+            b.border:SetColor(o.r, o.g, o.b)
         end
     end
 

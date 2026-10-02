@@ -90,7 +90,7 @@ do
     Check(Same(Paint(PICKS), { 0.4, 0.5, 0.6, 1 }), "plate: on follows Panels")
     Check(Same(Paint({ themePreset = "custom", themeColors = { bg = PICKS.themeColors.bg } }),
         { 0.14, 0.15, 0.16, 1 }), "plate: no Panels pick keeps the literal")
-    Check(source:find("SetColorTexture(0, 0, 0, 1)", 1, true), "campfire ring stays black")
+    Check(source:find("icon.ring:SetColorTexture(outline.r, outline.g, outline.b, 1)", 1, true), "campfire ring follows the Outlines setting (black by default)")
 end
 
 -- TopBar pills, with the player's opacity on top.

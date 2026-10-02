@@ -245,7 +245,7 @@ local function Build()
     track:SetStatusBarColor(T.accent.r, T.accent.g, T.accent.b)
     track:SetMinMaxValues(0, 1)
     ns.Solid(track, "BACKGROUND", T.bg, 0.9):SetAllPoints()
-    ns.Border(track, { r = 0, g = 0, b = 0 })
+    ns.Border(track, ns.THEME.outline)
     bar.track = track
 
     -- Marks sit above the track's border.

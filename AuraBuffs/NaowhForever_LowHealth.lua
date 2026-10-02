@@ -117,7 +117,7 @@ local function Build()
     frame.icon = frame:CreateTexture(nil, "ARTWORK")
     frame.icon:SetAllPoints()
     frame.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    ns.Border(frame, { r = 0, g = 0, b = 0 })
+    ns.Border(frame, ns.THEME.outline)
 
     frame.count = ns.Font(frame, 14, "OUTLINE")
     frame.count:SetPoint("BOTTOMRIGHT", -2, 2)

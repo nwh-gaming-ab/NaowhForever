@@ -272,6 +272,25 @@ for _, path in ipairs(toc) do
 end
 Check(#left == 0, "hand-written theme colors left: " .. table.concat(left, " | "))
 
+-- Outlines: a border or a hover reset that is drawn in black is drawn in ns.THEME.outline, so
+-- Themed reaches all of them. (A black fill, such as a panel's background, is not an outline.)
+do
+    local black = {}
+    for _, path in ipairs(toc) do
+        for line in Read(path):gmatch("[^\n]+") do
+            if not line:match("^%s*%-%-")
+                    and (line:find("ns.Border(", 1, true) and line:find("{ r = 0, g = 0, b = 0 }", 1, true)
+                        or line:find("SetColor(0, 0, 0", 1, true)
+                        or line:find("BORDER = { r = 0, g = 0, b = 0 }", 1, true)
+                        or line:find("ring:SetColorTexture(0, 0, 0", 1, true)
+                        or line:find("border:SetColorTexture(0, 0, 0", 1, true)) then
+                black[#black + 1] = path .. ": " .. line:sub(1, 80)
+            end
+        end
+    end
+    Check(#black == 0, "borders drawn in fixed black: " .. table.concat(black, " | "))
+end
+
 -- The constants that used to be built at file load are looked up when they are used.
 local function Slice(path, first, last)
     local source = Read(path)

@@ -145,6 +145,7 @@
   the entry count from under the bars to the top, between the title bar and the bars.
   Bottom by default.
 - Swing Timer: Apply Theme to Bar Colours (Colours, off by default) colors the main hand bar with your theme's Accent, the off hand bar with its lighter Accent and the ranged bar with a deeper shade of it, instead of the colors picked there.
+- Settings: an Outlines option under COLORS (Black or Themed) draws the 1px outlines around buttons, boxes, panels and most icons and bars in the theme's Borders & Lines color instead of black. Off by default.
 
 ### Changed
 - The options window's sidebar header shows the NaowhUI Forever logo, and the search box beside it is narrower.

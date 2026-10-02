@@ -16,8 +16,9 @@ J.Style = {
     --  Colours
     ---------------------------------------------------------------------------
     -- Naowh's house style: a 1px black border round cards, badges, chips, icons, buttons
-    -- and panels. The accent (Naowh blue, the theme's T.accent) marks what is picked.
-    BORDER_RGB = { r = 0, g = 0, b = 0 },
+    -- and panels (the theme's line instead when the player sets Outlines to Themed). The
+    -- accent (Naowh blue, the theme's T.accent) marks what is picked.
+    BORDER_RGB = _G.NaowhForever.THEME.outline,
     -- An item level above yours.
     RED_CODE = "|cfff87171",
     -- Naowh's gold: tips, and the contested zones.

@@ -285,7 +285,7 @@ local function NewListRow(list)
     row.tex = row.holder:CreateTexture(nil, "ARTWORK")
     row.tex:SetAllPoints()
     row.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    ns.Border(row.holder, { r = 0, g = 0, b = 0 }, 1)
+    ns.Border(row.holder, ns.THEME.outline, 1)
     row.activeBorder = ns.Border(row, ns.THEME.accent)
     return row
 end

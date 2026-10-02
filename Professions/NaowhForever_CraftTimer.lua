@@ -81,7 +81,7 @@ local function Build()
     track:SetStatusBarColor(T.accent.r, T.accent.g, T.accent.b)
     track:SetMinMaxValues(0, 1)
     ns.Solid(track, "BACKGROUND", T.bg, 0.9):SetAllPoints()
-    ns.Border(track, { r = 0, g = 0, b = 0 })
+    ns.Border(track, ns.THEME.outline)
     bar.track = track
 
     -- A label over each end of the track, above its border.
@@ -105,7 +105,7 @@ local function Build()
     local icon = CreateFrame("Frame", nil, bar)
     icon:SetSize(ICON, ICON)
     icon:SetPoint("LEFT", bar, "RIGHT", SIDE_GAP, 0)
-    ns.Border(icon, { r = 0, g = 0, b = 0 })
+    ns.Border(icon, ns.THEME.outline)
     bar.icon = icon:CreateTexture(nil, "ARTWORK")
     bar.icon:SetAllPoints()
     bar.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)

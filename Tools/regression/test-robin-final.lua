@@ -48,7 +48,7 @@ local function fixture(kind)
         Set = function(k, v) state.settings[k] = v end }
     local ns = { QoLSettings = S, Apply = function() end, Print = function() end,
         ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end,
-        THEME = { bg = {}, accent = { r = 0, g = 1, b = 1 }, accentSoft = {} },
+        THEME = { bg = {}, accent = { r = 0, g = 1, b = 1 }, accentSoft = {}, outline = { r = 0, g = 0, b = 0 } },
         UIFontPath = function() return 'font' end,
         Border = function() return frame() end, Solid = function() return frame() end,
         ThemeTint = function(_, literal) return literal end,

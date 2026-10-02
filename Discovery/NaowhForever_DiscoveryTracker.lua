@@ -18,6 +18,7 @@ local function SoftBlue(r, g, b)
     return r, g, b
 end
 local BLACK = { r = 0, g = 0, b = 0 }
+local OUTLINE = T.outline   -- the borders: black, or the theme's line
 local BAR_BG = { r = 0x14 / 255, g = 0x16 / 255, b = 0x19 / 255 }
 local READY = { r = 0x19 / 255, g = 1, b = 0x19 / 255 }
 
@@ -88,7 +89,7 @@ local function BuildPanel()
     panel:SetClampedToScreen(true)
     panel:SetWidth(PANEL_W)
     ns.Solid(panel, "BACKGROUND", BLACK, 0.7):SetAllPoints()
-    ns.Border(panel, BLACK)
+    ns.Border(panel, OUTLINE)
 
     panel.title = ns.Font(panel, 14, "OUTLINE", T.accent)
     panel.title:SetPoint("TOPLEFT", 8, -8)
@@ -130,7 +131,7 @@ local function BuildPanel()
     bar:SetPoint("TOPLEFT", panel.title, "BOTTOMLEFT", 0, -6)
     bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
     ns.Solid(bar, "BACKGROUND", ns.ThemeTint("panel", BAR_BG), 1):SetAllPoints()
-    ns.Border(bar, BLACK)
+    ns.Border(bar, OUTLINE)
     bar.text = ns.Font(bar, 12, "OUTLINE")
     bar.text:SetPoint("CENTER", 0, 0)
     bar:EnableMouse(true)
@@ -205,7 +206,7 @@ local function Row(i)
         { "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true },
         { "TOPLEFT", "BOTTOMLEFT", false }, { "TOPRIGHT", "BOTTOMRIGHT", false },
     }) do
-        local edge = ns.Solid(row, "ARTWORK", BLACK, 1)
+        local edge = ns.Solid(row, "ARTWORK", OUTLINE, 1)
         edge:SetPoint(e[1])
         edge:SetPoint(e[2])
         if e[3] then edge:SetHeight(1) else edge:SetWidth(1) end

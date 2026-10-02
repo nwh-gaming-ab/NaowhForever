@@ -13,7 +13,7 @@ local ns = _G.NaowhForever
 local S = ns.ProfessionSettings
 local T = ns.THEME
 
-local BLACK = { r = 0, g = 0, b = 0 }
+local BLACK = ns.THEME.outline   -- black, or the theme's line when Outlines is Themed
 local WIDTH, ROW_H, TOP, MAX_ROWS = 420, 26, 36, 8
 local FOOTER_H = 36
 

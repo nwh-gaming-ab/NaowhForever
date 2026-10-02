@@ -100,9 +100,12 @@ local function BuildIconGrid(panel)
         cell.icon:SetPoint("TOPLEFT", 1, -1)
         cell.icon:SetPoint("BOTTOMRIGHT", -1, 1)
         cell.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        local border = ns.Border(cell, { r = 0, g = 0, b = 0 })
+        local border = ns.Border(cell, ns.THEME.outline)
         cell:SetScript("OnEnter", function() border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
-        cell:SetScript("OnLeave", function() border:SetColor(0, 0, 0, 1) end)
+        cell:SetScript("OnLeave", function()
+            local o = ns.THEME.outline
+            border:SetColor(o.r, o.g, o.b, 1)
+        end)
         cell:SetScript("OnClick", function(self)
             local icon = grid.provider:GetIconForSaving(self.index)
             local onPick = grid.onPick
@@ -236,7 +239,7 @@ local function NewButton()
     btn.icon:SetPoint("TOPLEFT", 1, -1)
     btn.icon:SetPoint("BOTTOMRIGHT", -1, 1)
     btn.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    btn.border = ns.Border(btn, { r = 0, g = 0, b = 0 })
+    btn.border = ns.Border(btn, ns.THEME.outline)
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     btn:SetScript("OnClick", function(self, button)
         if button == "RightButton" then
@@ -267,7 +270,8 @@ local function Layout()
         btn:SetPoint("LEFT", (i - 1) * (size + 4), 0)
         btn.icon:SetTexture(set.icon)
         btn.icon:SetDesaturated(set.lost > 0)
-        if set.equipped then btn.border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) else btn.border:SetColor(0, 0, 0, 1) end
+        if set.equipped then btn.border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
+        else btn.border:SetColor(ns.THEME.outline.r, ns.THEME.outline.g, ns.THEME.outline.b, 1) end
         btn:Show()
     end
     for i = #sets + 1, #buttons do buttons[i]:Hide() end
@@ -474,7 +478,7 @@ do
                 button:SetSize(36, 36)
                 button.icon = button:CreateTexture(nil, "ARTWORK")
                 button.icon:SetAllPoints()
-                ns.Border(button, { r = 0, g = 0, b = 0 })
+                ns.Border(button, ns.THEME.outline)
                 button:SetScript("OnClick", function(self)
                     if InCombatLockdown() then return end
                     -- Re-check the bags: they may have changed since the chooser opened.
@@ -530,7 +534,7 @@ do
                 button.icon = button:CreateTexture(nil, "ARTWORK")
                 button.icon:SetPoint("TOPLEFT", 1, -1)
                 button.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-                ns.Border(button, { r = 0, g = 0, b = 0 })
+                ns.Border(button, ns.THEME.outline)
                 button:SetScript("PostClick", function(self, mouse, down)
                     if mouse == "RightButton" and not down then Choose(self, slot) end
                 end)
