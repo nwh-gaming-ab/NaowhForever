@@ -59,7 +59,8 @@ local PICKS = { themePreset = "custom", themeColors = {
 local files = { "ThreatMeter/NaowhForever_ThreatMeter.lua", "TopBar/NaowhForever_TopBar.lua",
     "AuraBuffs/NaowhForever_Campfire.lua", "QoL/NaowhForever_LootFeed.lua",
     "Discovery/NaowhForever_DiscoveryTracker.lua", "Discovery/NaowhForever_DiscoveryMap.lua",
-    "QoL/NaowhForever_TownMap.lua" }
+    "Discovery/NaowhForever_Discovery.lua", "QoL/NaowhForever_TownMap.lua",
+    "QoL/NaowhForever_CombatTimer.lua", "SmartReminders/NaowhForever_RaidReminders.lua" }
 for _, path in ipairs(files) do
     local source = Read(path)
     local count = 0
@@ -490,6 +491,89 @@ do
     got = Bar(ACCENT_PRESET, "queueColor", true)
     Check(Same(got, { 1, 0.7, 0.2, 1 }), "swing timer: the queued attack color is not themed")
     Check(source:find('S.Toggle("themeColors", "Apply Theme to Bar Colours"', 1, true), "swing timer: the switch beside Ranged")
+end
+
+-- Surfaces that used to be a fixed black fill: the Background of the theme now, the same
+-- fill and opacity with the default theme.
+local BG_PRESET = { themePreset = "midnight" }
+local MIDNIGHT_BG = { r = 0x0b / 255, g = 0x10 / 255, b = 0x20 / 255 }
+
+-- Runs a statement that calls ns.Solid and returns the colour and alpha it was given.
+local function SolidOf(stmt, account, env)
+    local got
+    local ns = LoadCore(account)
+    ns.Solid = function(_, _, c, a) got = { c.r, c.g, c.b, a } end
+    env.ns = ns
+    Run(stmt, env)
+    return got
+end
+
+do
+    local source = Read("Discovery/NaowhForever_DiscoveryTracker.lua")
+    local BLACK = Const(source, "BLACK")
+    local stmt = assert(source:match('(ns%.Solid%(panel, "BACKGROUND", ns%.ThemeTint%("bg", BLACK%), 0%.7%))'))
+    Check(Same(SolidOf(stmt, {}, { panel = {}, BLACK = BLACK }), { 0, 0, 0, 0.7 }), "library books: black at 70% by default")
+    Check(Same(SolidOf(stmt, BG_PRESET, { panel = {}, BLACK = BLACK }), { MIDNIGHT_BG.r, MIDNIGHT_BG.g, MIDNIGHT_BG.b, 0.7 }),
+        "library books: the Background at 70%")
+end
+
+-- The stripes in the Library Books settings list sit on the window's own Background, so they must not
+-- be that color: black at 35% by default, the theme's Panels (at a higher opacity) once it changed them.
+do
+    local source = Read("Discovery/NaowhForever_Discovery.lua")
+    local STRIPE = Const(source, "STRIPE")
+    local ALPHA = tonumber(source:match("\nlocal STRIPE_ALPHA = ([%d%.]+)"))
+    local PANEL_ALPHA = tonumber(source:match("\nlocal PANEL_STRIPE_ALPHA = ([%d%.]+)"))
+    Check(ALPHA == 0.35 and PANEL_ALPHA == 0.5, "book stripes: the opacities are the ones the test knows")
+    local stmt = assert(source:match('(local panel = ns%.ThemeTint%("panel", nil%)\n.-return ns%.Solid%(p, "BACKGROUND", STRIPE, STRIPE_ALPHA%))'))
+    local function Stripe(account)
+        return SolidOf(stmt, account, { p = {}, STRIPE = STRIPE, STRIPE_ALPHA = ALPHA, PANEL_STRIPE_ALPHA = PANEL_ALPHA })
+    end
+    Check(Same(Stripe({}), { 0, 0, 0, ALPHA }), "book stripes: black at 35% by default")
+    Check(Same(Stripe({ themePreset = "custom", themeColors = { bg = { r = 1, g = 0, b = 0 } } }), { 0, 0, 0, ALPHA }),
+        "book stripes: a theme that changed only the Background keeps the black band")
+
+    local function Lin(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
+    local function Lum(c) return 0.2126 * Lin(c[1]) + 0.7152 * Lin(c[2]) + 0.0722 * Lin(c[3]) end
+    local function Contrast(a, b)
+        local la, lb = Lum(a), Lum(b)
+        if la < lb then la, lb = lb, la end
+        return (la + 0.05) / (lb + 0.05)
+    end
+    -- What the band looks like: its color at its opacity over the window's Background.
+    local function Shown(bg, stripe)
+        local out = {}
+        for i = 1, 3 do out[i] = stripe[i] * stripe[4] + bg[i] * (1 - stripe[4]) end
+        return out
+    end
+    local function Bg(theme) return { theme.bg.r, theme.bg.g, theme.bg.b } end
+
+    local defaultBg = Bg(LoadCore({}).THEME)
+    local baseline = Contrast(Shown(defaultBg, Stripe({})), defaultBg)
+    Check(baseline > 1.03, "book stripes: the default band shows against the window")
+    for _, preset in ipairs({ "midnight", "slate", "obsidian", "aubergine", "forest", "crimson", "rosenoir", "cottoncandy" }) do
+        local account = { themePreset = preset }
+        local theme = LoadCore(account).THEME
+        local stripe = Stripe(account)
+        Check(Same(stripe, { theme.panel.r, theme.panel.g, theme.panel.b, PANEL_ALPHA }), "book stripes: " .. preset .. " uses its Panels color")
+        Check(Contrast(Shown(Bg(theme), stripe), Bg(theme)) >= baseline,
+            "book stripes: " .. preset .. " shows against the window at least as much as the default band")
+    end
+end
+
+do
+    local source = Read("QoL/NaowhForever_CombatTimer.lua")
+    local TIMER_BG = Const(source, "TIMER_BG")
+    local stmt = assert(source:match('(frame%.bg = ns%.Solid%(frame, "BACKGROUND", ns%.ThemeTint%("bg", TIMER_BG%), 0%.8%))'))
+    Check(Same(SolidOf(stmt, {}, { frame = {}, TIMER_BG = TIMER_BG }), { 0, 0, 0, 0.8 }), "combat timer: black at 80% by default")
+    Check(Same(SolidOf(stmt, BG_PRESET, { frame = {}, TIMER_BG = TIMER_BG }), { MIDNIGHT_BG.r, MIDNIGHT_BG.g, MIDNIGHT_BG.b, 0.8 }),
+        "combat timer: the Background")
+    source = Read("SmartReminders/NaowhForever_RaidReminders.lua")
+    local CONFIG_BG = Const(source, "CONFIG_BG")
+    stmt = assert(source:match('(ns%.Solid%(f, "BACKGROUND", ns%.ThemeTint%("bg", CONFIG_BG%), 1%))'))
+    Check(Same(SolidOf(stmt, {}, { f = {}, CONFIG_BG = CONFIG_BG }), { 0, 0, 0, 1 }), "anchor config bar: black by default")
+    Check(Same(SolidOf(stmt, BG_PRESET, { f = {}, CONFIG_BG = CONFIG_BG }), { MIDNIGHT_BG.r, MIDNIGHT_BG.g, MIDNIGHT_BG.b, 1 }),
+        "anchor config bar: the Background")
 end
 
 print("PASS theme HUD: " .. cases .. " checks")

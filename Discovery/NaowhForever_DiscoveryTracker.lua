@@ -87,7 +87,7 @@ local function BuildPanel()
     panel:SetMovable(true)
     panel:SetClampedToScreen(true)
     panel:SetWidth(PANEL_W)
-    ns.Solid(panel, "BACKGROUND", BLACK, 0.7):SetAllPoints()
+    ns.Solid(panel, "BACKGROUND", ns.ThemeTint("bg", BLACK), 0.7):SetAllPoints()
     ns.Border(panel, BLACK)
 
     panel.title = ns.Font(panel, 14, "OUTLINE", T.accent)

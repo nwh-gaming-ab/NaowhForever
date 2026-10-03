@@ -21,8 +21,13 @@ local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t"
 local IN_BAGS = "|cffffd100In bags|r"
 local IN_BANK = "|cffffd100In bank|r"
 local MISSING = "|cfff87171Missing|r"
+-- The shaded band behind every other book row, over the window's own Background: black at 35%.
+-- A theme that changed Panels gets that color instead, at a higher opacity because a lighter band
+-- shows less than a black one. Never the Background: that is the color under the band, so a band
+-- in it would not show at all.
 local STRIPE = { r = 0, g = 0, b = 0 }
 local STRIPE_ALPHA = 0.35
+local PANEL_STRIPE_ALPHA = 0.5
 
 local Library = {}
 ns.Library = Library
@@ -179,6 +184,8 @@ local function Row(parent, y, text, sub, status, onWaypoint, stripe)
     h = h + math.ceil(s:GetStringHeight()) + 2
     if stripe then
         local band = UI.Keep(parent, "bookStripe", function(p)
+            local panel = ns.ThemeTint("panel", nil)
+            if panel then return ns.Solid(p, "BACKGROUND", panel, PANEL_STRIPE_ALPHA) end
             return ns.Solid(p, "BACKGROUND", STRIPE, STRIPE_ALPHA)
         end)
         band:SetPoint("TOPLEFT", parent, "TOPLEFT", x - 6, y)

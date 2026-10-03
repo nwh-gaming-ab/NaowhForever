@@ -6,6 +6,8 @@ local ns = _G.NaowhForever
 local S = ns.QoLSettings
 local UI = ns.UI
 
+local TIMER_BG = { r = 0, g = 0, b = 0 }
+
 local frame, clock, unlocked
 local started, last = nil, 0
 
@@ -74,7 +76,7 @@ local function Build()
     frame = CreateFrame("Frame", "NaowhForeverCombatTimer", UIParent)
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
-    frame.bg = ns.Solid(frame, "BACKGROUND", { r = 0, g = 0, b = 0 }, 0.8)
+    frame.bg = ns.Solid(frame, "BACKGROUND", ns.ThemeTint("bg", TIMER_BG), 0.8)
     frame.bg:SetAllPoints()
     frame.text = ns.Font(frame, 32, "OUTLINE")
     frame.text:SetPoint("CENTER")
