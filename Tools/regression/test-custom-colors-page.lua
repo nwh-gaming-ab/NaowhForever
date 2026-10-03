@@ -8,6 +8,7 @@ local function Read(path)
     return s
 end
 local coreSource = Read("Core/NaowhForever_Core.lua")
+local rxpSource = Read("Core/NaowhForever_RXPThemes.lua")
 local source = Read("Core/NaowhForever_Window.lua")
 local first = assert(source:find('_, h = W:SectionHeader(parent, "COLORS", y)', 1, true))
 local last = assert(source:find('_, h = W:ReloadButton(parent, y)', first, true))
@@ -15,34 +16,45 @@ local section = source:sub(first, last - 1)
 local chunk = assert(loadstring("local parent, y = ...; local _, h; " .. section .. " return y"))
 
 -- The pending flag has to outlive a rebuild, so it lives at file scope, above the builder.
-local flag = assert(source:find("\nlocal colorsPending = false\n", 1, true))
-assert(flag < assert(source:find("function ns.BuildSettingsPage", 1, true)), "flag is file scope")
+local build = assert(source:find("function ns.BuildSettingsPage", 1, true))
+for _, name in ipairs({ "colorsPending", "rxpPending" }) do
+    local flag = assert(source:find("\nlocal " .. name .. " = false\n", 1, true))
+    assert(flag < build, name .. " is file scope")
+end
 
 local HINT = "Reload UI to apply your color changes."
+local RXP_HINT = "Reload UI to apply your RestedXP changes."
 local cases = 0
 local function Check(ok, label) assert(ok, label); cases = cases + 1 end
 Check(not section:find("ReloadUI", 1, true), "the section never calls ReloadUI itself")
 
-local function RealCore(account)
+local function RealCore(account, rxp)
     local frame = setmetatable({}, { __index = function() return function() end end })
     function frame:SetScript() end
     local env = { CreateFrame = function() return frame end,
+        C_AddOns = { DoesAddOnExist = function(name) return rxp == true and name == "RXPGuides" end },
         NaowhForeverDB = { account = account, profiles = {}, charActive = {} } }
     env._G = env
     setmetatable(env, { __index = _G })
     local core = assert(loadstring(coreSource, "Core"))
     setfenv(core, env)
     core("NaowhForever")
+    local module = assert(loadstring(rxpSource, "RXPThemes"))
+    setfenv(module, env)
+    module("NaowhForever")
     return env.NaowhForever
 end
 
-local function Page(account)
+local function Page(account, rxp)
     local e = { confirms = {}, refreshes = 0, account = account }
-    local ns = RealCore(account)
+    local ns = RealCore(account, rxp)
     ns.Confirm = function(text, onYes) e.confirms[#e.confirms + 1] = { text = text, yes = onYes } end
-    local env = { ns = ns, W = {}, colorsPending = false,
+    local env = { ns = ns, W = {}, colorsPending = false, rxpPending = false,
         UI = { RefreshPage = function() e.refreshes = e.refreshes + 1 end } }
-    function env.W:SectionHeader() return nil, 0 end
+    function env.W:SectionHeader(_, text)
+        e.headers[#e.headers + 1] = text
+        return nil, 0
+    end
     function env.W:DualRow(_, _, left, right)
         e.rows[#e.rows + 1] = { left, right }
         return nil, 0
@@ -54,7 +66,7 @@ local function Page(account)
     setmetatable(env, { __index = _G })
     setfenv(chunk, env)
     function e.build()
-        e.rows, e.notes = {}, {}
+        e.rows, e.notes, e.headers = {}, {}, {}
         chunk({}, 0)
         e.theme = e.rows[1][1]
     end
@@ -248,6 +260,185 @@ do
     Check(#frames == 10 and Shown() == 8 and #painted == 8 and painted[8][1] == 0.25, "more colors build only the missing chips and show them all")
     Check(Build(function() return List(3, 1) end) and #frames == 5 and Shown() == 3, "one chip per color from the start")
     Check(Build(function() return {} end) and #frames == 2 and Shown() == 0, "no colors, no chips")
+end
+
+-- The RESTEDXP section.
+do
+    local function Toggle(e)
+        for _, row in ipairs(e.rows) do
+            if row[1].text == "Add Themes to RestedXP" then return row[1], row[2] end
+        end
+    end
+    local function Pair(page, name)
+        for _, row in ipairs(page.rows) do
+            if row[1].text == name then return row[1], row[2] end
+        end
+    end
+    local function Hidden(page)
+        for _, name in ipairs({ "RestedXP Theme", "RestedXP Arrow", "Naowh Arrow Shape", "Naowh Arrow Glow", "Naowh Arrow Size", "Show Arrow Text", "Naowh Arrow Text Gap", "Use Addon Font",
+                "Use Theme Text Color" }) do
+            for _, row in ipairs(page.rows) do
+                if row[1].text == name or (row[2] and row[2].text == name) then return false end
+            end
+        end
+        return true
+    end
+    -- the RestedXP rows after the Theme rows, each as "left|right"
+    local function Layout(page)
+        local out = {}
+        for i = #page.rows, 1, -1 do
+            local row = page.rows[i]
+            table.insert(out, 1, (row[1].text or "") .. "|" .. (row[2] and row[2].text or ""))
+            if row[1].text == "Add Themes to RestedXP" then break end
+        end
+        return table.concat(out, ", ")
+    end
+    Check(Toggle(Page({})) == nil and Toggle(Page({}, false)) == nil, "no RestedXP toggle without RestedXP Guides")
+    Check(table.concat(Page({}).headers, ",") == "COLORS", "and no RESTEDXP section either")
+    local a = {}
+    local e = Page(a, true)
+    local toggle, beside = Toggle(e)
+    Check(table.concat(e.headers, ",") == "COLORS,RESTEDXP", "RestedXP Guides installed: a RESTEDXP section of its own, even with the themes off")
+    Check(toggle and toggle.type == "toggle", "the toggle is there with RestedXP Guides installed")
+    Check(toggle.getValue() == false and a.rxpThemes == nil, "off by default")
+    for _, word in ipairs({ "NaowhUI", "eight Naowh themes", "Naowh (current)", "waypoint arrow", "Look and Feel", "Addon Font", "Takes effect after a /reload" }) do
+        Check(toggle.tooltip:find(word, 1, true), "tooltip mentions " .. word)
+    end
+
+    Check(beside.type == "label" and beside.text == "", "nothing is beside the toggle")
+    Check(Layout(e) == "Add Themes to RestedXP|", "with the themes off, the toggle is the only RestedXP row")
+    Check(Hidden(e), "and none of the other RestedXP choices is shown")
+    Check(#e.notes == 0, "no hint before a change")
+    local refreshed = e.refreshes
+    toggle.setValue(true)
+    Check(a.rxpThemes == true and e.refreshes == refreshed + 1 and #e.confirms == 0, "on is stored and the page redraws")
+    e.build()
+    Check(Toggle(e).getValue() == true and #e.notes == 1 and e.notes[1] == RXP_HINT, "it reads back, and the RestedXP reload hint shows")
+    Check(not Hidden(e), "and the choices are shown")
+
+    Check(Layout(e) == "Add Themes to RestedXP|RestedXP Theme, RestedXP Arrow|, Show Arrow Text|, Use Addon Font|Use Theme Text Color",
+        "with the themes on: the toggle with the theme beside it, the arrow choice, the arrow text, and the font and text color")
+    local switch, picker = Pair(e, "Add Themes to RestedXP")
+    Check(switch and picker.type == "dropdown" and picker.text == "RestedXP Theme", "the theme is a dropdown beside the toggle")
+    Check(picker.getValue() == "" and e.account.rxpTheme == nil, "RestedXP's own by default")
+    Check(#picker.order == 11 and picker.order[1] == "" and picker.order[2] == "current" and picker.order[3] == "default"
+        and picker.values[""] == "RestedXP (default)" and picker.values.current == "Current Theme" and picker.values.default == "NaowhUI"
+        and picker.values.crimson == "Crimson", "RestedXP (default), Current Theme, NaowhUI and the eight presets")
+    Check(picker.tooltip:find("every login", 1, true) and picker.tooltip:find("Current Theme", 1, true), "its tooltip says what it does")
+    Check(picker.disabled == nil, "never greyed out: it is not shown when it does not apply")
+    local refreshesBefore = e.refreshes
+    picker.setValue("crimson")
+    Check(e.account.rxpTheme == "crimson" and picker.getValue() == "crimson" and e.refreshes == refreshesBefore,
+        "a pick is stored, and the page is not redrawn")
+    picker.setValue("current")
+    Check(e.account.rxpTheme == "current" and picker.getValue() == "current", "so is the current theme")
+    picker.setValue("")
+    Check(e.account.rxpTheme == nil, "RestedXP (default) clears it")
+    local arrow, noShape = Pair(e, "RestedXP Arrow")
+    Check(arrow and arrow.type == "dropdown" and noShape.type == "label" and noShape.text == "",
+        "the arrow choice is the next row, with nothing beside it until Naowh arrow is picked")
+    Check(#arrow.order == 3 and arrow.order[1] == "layer" and arrow.values.layer == "Colored layer"
+        and arrow.values.image == "Naowh arrow" and arrow.values.off == "RestedXP's own", "three ways to draw it")
+    Check(arrow.getValue() == "layer" and arrow.disabled == nil, "a layer by default, and never greyed out: it is only shown with the themes on")
+    refreshed = e.refreshes
+    arrow.setValue("image")
+    Check(a.rxpArrow == "image" and arrow.getValue() == "image" and e.refreshes == refreshed + 1,
+        "the choice is stored, and the page redraws so the choices below follow it")
+    arrow.setValue("layer")
+    Check(a.rxpArrow == nil, "the default is stored as nothing")
+
+    Check(Pair(e, "Naowh Arrow Shape") == nil and Pair(e, "Naowh Arrow Size") == nil,
+        "with the layer as the arrow style, the choices for Naowh's arrow are not shown")
+    local imaged = Page({ rxpThemes = true, rxpArrow = "image" }, true)
+    Check(Layout(imaged) == "Add Themes to RestedXP|RestedXP Theme, RestedXP Arrow|Naowh Arrow Shape, Naowh Arrow Glow|Naowh Arrow Size, "
+        .. "Show Arrow Text|Naowh Arrow Text Gap, Use Addon Font|Use Theme Text Color",
+        "with Naowh arrow picked: the arrow and its shape, its glow and size, the arrow text and its gap, then the font and text color")
+    local _, shape = Pair(imaged, "RestedXP Arrow")
+    local glow, size = Pair(imaged, "Naowh Arrow Glow")
+    Check(shape.type == "dropdown" and glow.type == "toggle" and size.type == "slider", "a dropdown, a toggle and a slider")
+    Check(#shape.order == 2 and shape.order[1] == "kite" and shape.order[2] == "wide" and shape.values.kite == "Kite"
+        and shape.values.wide == "Wide kite", "a kite or a wide kite")
+    Check(shape.getValue() == "kite" and glow.getValue() == false, "a kite without a glow by default")
+    Check(shape.disabled == nil and glow.disabled == nil, "and never greyed out")
+    shape.setValue("wide")
+    glow.setValue(true)
+    Check(imaged.account.rxpArrowShape == "wide" and imaged.account.rxpArrowGlow == true and shape.getValue() == "wide"
+        and glow.getValue() == true, "the choices are stored")
+    shape.setValue("kite")
+    glow.setValue(false)
+    Check(imaged.account.rxpArrowShape == nil and imaged.account.rxpArrowGlow == nil, "the defaults are stored as nothing")
+    Check(size.min == 60 and size.max == 200 and size.step == 5 and size.getValue() == 90, "from 60 to 200, 90 by default")
+    Check(size.tooltip:find("percent", 1, true) and size.tooltip:find("Arrow Size", 1, true), "its tooltip says what it is a percent of")
+    size.setValue(150)
+    Check(imaged.account.rxpArrowSize == 150 and size.getValue() == 150 and imaged.refreshes == 0, "a size is stored, and the page is not redrawn")
+    size.setValue(90)
+    Check(imaged.account.rxpArrowSize == nil, "the default is stored as nothing")
+    local arrowText, gap = Pair(imaged, "Show Arrow Text")
+    Check(arrowText.type == "toggle" and arrowText.getValue() == true and arrowText.disabled == nil, "the arrow text is a switch, on by default")
+    Check(arrowText.tooltip:find("any arrow style", 1, true), "for any arrow style")
+    arrowText.setValue(false)
+    Check(imaged.account.rxpArrowText == false and arrowText.getValue() == false and imaged.refreshes == 0, "off is stored, and the page is not redrawn")
+    arrowText.setValue(true)
+    Check(imaged.account.rxpArrowText == nil, "on is stored as nothing")
+    Check(gap.type == "slider" and gap.min == 0 and gap.max == 20 and gap.step == 1 and gap.getValue() == 4,
+        "the text gap is a slider from 0 to 20, 4 by default")
+    Check(gap.tooltip:find("pixels", 1, true), "its tooltip says the unit")
+    gap.setValue(9)
+    Check(imaged.account.rxpArrowGap == 9 and gap.getValue() == 9 and imaged.refreshes == 0, "a gap is stored, and the page is not redrawn")
+    gap.setValue(4)
+    Check(imaged.account.rxpArrowGap == nil, "the default is stored as nothing")
+
+    local font, text = Pair(e, "Use Addon Font")
+    Check(font and text and font.type == "toggle" and text.type == "toggle", "two more switches, in one row")
+    Check(text.text == "Use Theme Text Color", "named for what they do")
+    Check(font.getValue() == true and text.getValue() == true, "both on by default")
+    Check(font.disabled == nil and text.disabled == nil, "and never greyed out")
+    for _, word in ipairs({ "Addon Font", "Takes effect after a /reload" }) do
+        Check(font.tooltip:find(word, 1, true), "the font tooltip mentions " .. word)
+    end
+    Check(text.tooltip:find("Takes effect after a /reload", 1, true), "so does the text color's")
+
+    local fp = Page({ rxpThemes = true }, true)
+    local fpFont, fpText = Pair(fp, "Use Addon Font")
+    fpFont.setValue(false)
+    fp.build()
+    Check(fp.account.rxpFont == false and fp.account.rxpTextColor == nil and fpFont.getValue() == false and fpText.getValue() == true
+        and fp.refreshes == 1 and #fp.notes == 1 and fp.notes[1] == RXP_HINT, "the font alone: stored, the page redraws, and the reload hint shows")
+    fpFont.setValue(true)
+    Check(fp.account.rxpFont == nil and fpFont.getValue() == true, "on is stored as nothing")
+    local tp = Page({ rxpThemes = true }, true)
+    local tpFont, tpText = Pair(tp, "Use Addon Font")
+    tpText.setValue(false)
+    tp.build()
+    Check(tp.account.rxpTextColor == false and tp.account.rxpFont == nil and tpText.getValue() == false and tpFont.getValue() == true
+        and tp.refreshes == 1 and #tp.notes == 1 and tp.notes[1] == RXP_HINT, "the text color alone: the same")
+
+    local both = Page({ rxpThemes = true }, true)
+    both.theme.setValue("crimson")
+    both.build()
+    Check(#both.notes == 1 and both.notes[1] == HINT, "a color change brings up the color hint, not the RestedXP one")
+    local bothFont = Pair(both, "Use Addon Font")
+    bothFont.setValue(false)
+    both.build()
+    Check(#both.notes == 2 and both.notes[1] == HINT and both.notes[2] == RXP_HINT,
+        "and after a RestedXP change as well, both: the color one first")
+
+    -- a fresh page: the slice is rebuilt in the newest page's environment
+    local again = Page({ rxpThemes = true }, true)
+    Toggle(again).setValue(false)
+    again.build()
+    Check(again.account.rxpThemes == nil, "off clears it")
+    Check(Hidden(again) and select(2, Toggle(again)).type == "label", "and the choices are hidden again")
+
+    local plain = #Page({ themePreset = "custom" }).rows
+    local custom = Page({ themePreset = "custom" }, true)
+    Check(Toggle(custom) and #custom.rows == plain + 1, "with Custom and the themes off, RestedXP adds the one toggle row")
+    Check(custom.rows[#custom.rows][1].text == "Add Themes to RestedXP", "and it is the last, above the Reload button")
+    local onCustom = Page({ themePreset = "custom", rxpThemes = true }, true)
+    Check(#onCustom.rows == plain + 4, "with the themes on, RestedXP adds four rows: the toggle and theme, the arrow, the arrow text, and the font and text")
+    Check(onCustom.rows[#onCustom.rows][1].text == "Use Addon Font", "and the font row is the last, above the Reload button")
+    local onImage = Page({ themePreset = "custom", rxpThemes = true, rxpArrow = "image" }, true)
+    Check(#onImage.rows == plain + 5, "with Naowh arrow picked, one more: the glow and size")
 end
 
 print("PASS custom colors page: " .. cases .. " checks")
