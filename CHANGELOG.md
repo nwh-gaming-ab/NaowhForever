@@ -167,6 +167,12 @@
   Bottom by default.
 - Threat Meter: Apply Theme to Your Bar (Colours, off by default) colors your bar in a darker shade of your theme's Accent instead of the color picked there. The tank and pull aggro colors are unchanged.
 - Swing Timer: Apply Theme to Bar Colours (Colours, off by default) colors the main hand bar with your theme's Accent, the off hand bar with its lighter Accent and the ranged bar with a deeper shade of it, instead of the colors picked there.
+- Swing Timer: Color by Active Seal (SEALS on the Bars page, off by default, Paladins only)
+  colors the melee bars by the Seal you have up, with a color to pick for each of
+  Righteousness, Command, Crusader, Justice, Light, Wisdom, Fury and Martyrdom. It follows
+  your Seal casts and counts each seal's 30 seconds, so a twist or a seal running out shows
+  at once, in combat too, and takes over from Class Colors and Apply Theme to Bar Colours
+  while a seal is up.
 
 ### Changed
 - The options window's sidebar header shows the NaowhUI Forever logo, and the search box beside it is narrower.

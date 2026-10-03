@@ -6,7 +6,8 @@
 --
 --  On top of the bars, each off until turned on: a window at the end of the melee swing, the
 --  Auto Shot cast window on a hunter's Ranged bar, a tick where the current cast ends, and a
---  Target bar estimated from the melee hits you take.
+--  Target bar estimated from the melee hits you take. A paladin's melee bars can also take the
+--  color of the seal that is up.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local UI = ns.UI
@@ -27,6 +28,15 @@ local S = UI.ModuleSettings("swingTimer", {
     queueHighlight = true,
     queueColor = { r = 1, g = 0.70, b = 0.20 },
     cleaveColor = { r = 0.95, g = 0.35, b = 0.25 },
+    sealColors = false,
+    sealRighteousnessColor = { r = 1.00, g = 0.95, b = 0.75 },
+    sealCommandColor = { r = 0.95, g = 0.40, b = 0.20 },
+    sealCrusaderColor = { r = 0.70, g = 0.88, b = 1.00 },
+    sealJusticeColor = { r = 0.60, g = 0.40, b = 0.95 },
+    sealLightColor = { r = 0.70, g = 0.90, b = 0.35 },
+    sealWisdomColor = { r = 0.30, g = 0.60, b = 1.00 },
+    sealFuryColor = { r = 0.80, g = 0.15, b = 0.25 },
+    sealMartyrdomColor = { r = 0.90, g = 0.40, b = 0.70 },
     swingWindow = false, swingWindowTime = 0.4,
     swingWindowColor = { r = 1, g = 1, b = 1, a = 0.35 },
     windowLatency = false,
@@ -78,6 +88,22 @@ local QUEUE_SPELLS = {
     HUNTER = { { id = 2973, key = "queueColor" } },   -- Raptor Strike
 }
 
+-- Paladin seals, rank 1 of each. Every rank carries its seal's name, and the name is what is
+-- matched, so a rank missing from here still counts. While one is up the melee bars take its
+-- color (Color by Active Seal).
+-- Every seal lasts 30 seconds, and 34 with the Seal Duration Increase item effect: a seal
+-- buff that can be read replaces this with its real length.
+local SEAL_SPELLS = {
+    { id = 20154, key = "sealRighteousnessColor", text = "Seal of Righteousness" },
+    { id = 20375, key = "sealCommandColor", text = "Seal of Command" },
+    { id = 21082, key = "sealCrusaderColor", text = "Seal of the Crusader" },
+    { id = 20164, key = "sealJusticeColor", text = "Seal of Justice" },
+    { id = 20165, key = "sealLightColor", text = "Seal of Light" },
+    { id = 20166, key = "sealWisdomColor", text = "Seal of Wisdom" },
+    { id = 1311649, key = "sealFuryColor", text = "Seal of Fury" },
+    { id = 407798, key = "sealMartyrdomColor", text = "Seal of Martyrdom" },
+}
+
 local SWING, DIR, IMMEDIATE, ROWS
 if SUPPORTED then
     SWING = Enum.PlayerSwingType
@@ -96,6 +122,7 @@ local frame, unlockActive, unlocked, inCombat, pendingApply, timeFormat
 local rows, byType = {}, {}
 local live = 0
 local queueSpells, queued = {}, false
+local sealByName, seal, sealTimer, sealSeconds = {}, false, nil, 30
 local isHunter, moving, latency, castEnd = false, false, 0, nil
 
 local function On()
@@ -224,6 +251,7 @@ end
 local function RowColor(row)
     local def = row.def
     if def.melee and queued then return Color(queued.key) end
+    if def.melee and seal then return Color(seal.key) end
     if S.Get("classColored") and not def.target then
         local c = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
         if c then return c.r, c.g, c.b, 1 end
@@ -427,13 +455,78 @@ local function QueuedSpell()
     return false
 end
 
+local function PaintMelee()
+    for i = 1, #rows do
+        if rows[i].def.melee then PaintRow(rows[i]) end
+    end
+end
+
 local function PaintQueue()
     local q = S.Get("queueHighlight") and QueuedSpell() or false
     if q == queued then return end
     queued = q
-    for i = 1, #rows do
-        if rows[i].def.melee then PaintRow(rows[i]) end
+    PaintMelee()
+end
+
+-- The seal a spell belongs to, if any.
+local function SealOf(spellID)
+    if not Plain(spellID) then return nil end
+    local name = C_Spell.GetSpellName(spellID)
+    return Plain(name) and sealByName[name] or nil
+end
+
+local function SealsOn()
+    return next(sealByName) ~= nil and S.Get("sealColors")
+end
+
+local function SetSeal(entry)
+    if entry == seal then return end
+    seal = entry
+    if not entry and sealTimer then
+        sealTimer:Cancel()
+        sealTimer = nil
     end
+    PaintMelee()
+end
+
+-- The client hides the player's buffs from addons in combat, so nothing there says a seal has
+-- run out: it is counted from the cast, and from its buff when that can be read.
+local function RunOutIn(seconds)
+    if sealTimer then sealTimer:Cancel() end
+    sealTimer = C_Timer.NewTimer(seconds, function()
+        sealTimer = nil
+        SetSeal(false)
+    end)
+end
+
+-- The seal buff's real length, and what is left of it.
+local function CountFrom(aura)
+    local ends, length = aura.expirationTime, aura.duration
+    if Plain(length) and type(length) == "number" and length > 0 then sealSeconds = length end
+    if Plain(ends) and type(ends) == "number" and ends > 0 then
+        RunOutIn(math.max(ends - GetTime(), 0))
+    end
+end
+
+-- Out of combat the buffs say which seal is up, which drops one that is gone; in combat the
+-- seal being counted stands.
+local function ReadSeal()
+    if not SealsOn() then
+        SetSeal(false)
+        return
+    end
+    if InCombatLockdown() or C_Secrets.ShouldAurasBeSecret() then return end
+    for i = 1, 40 do
+        local aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
+        if not aura then break end
+        local entry = SealOf(aura.spellId)
+        if entry then
+            SetSeal(entry)
+            CountFrom(aura)
+            return
+        end
+    end
+    SetSeal(false)
 end
 
 -------------------------------------------------------------------------------
@@ -548,6 +641,12 @@ local function Build()
             queueSpells[#queueSpells + 1] = q
         end
     end
+    if classFile == "PALADIN" then
+        for _, q in ipairs(SEAL_SPELLS) do
+            local name = C_Spell.GetSpellName(q.id)
+            if Plain(name) and name then sealByName[name] = q end
+        end
+    end
     Place()
 end
 
@@ -605,6 +704,13 @@ events:SetScript("OnEvent", function(_, event, a1, a2, a3, a4, a5)
     elseif event == "PLAYER_STARTED_MOVING" or event == "PLAYER_STOPPED_MOVING" then
         moving = event == "PLAYER_STARTED_MOVING"
         UpdateWindow(byType[SWING.Ranged])
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        -- a3 = spellID
+        local cast = SealOf(a3)
+        if cast then
+            SetSeal(cast)
+            RunOutIn(sealSeconds)
+        end
     elseif event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_CHANNEL_STOP" then
         castEnd = nil
         UpdateCastTick()
@@ -614,10 +720,12 @@ events:SetScript("OnEvent", function(_, event, a1, a2, a3, a4, a5)
     elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
         inCombat = event == "PLAYER_REGEN_DISABLED"
         UpdateVisibility()
+        if not inCombat then ReadSeal() end
     elseif event == "PLAYER_DEAD" then
         for i = 1, #rows do
             if rows[i].live then IdleRow(rows[i]) end
         end
+        SetSeal(false)
         UpdateVisibility()
     elseif event == "WEAPON_SLOT_CHANGED" then
         RefreshRows()
@@ -634,6 +742,7 @@ events:SetScript("OnEvent", function(_, event, a1, a2, a3, a4, a5)
     else
         -- PLAYER_ENTERING_WORLD
         RefreshRows()
+        ReadSeal()
     end
 end)
 
@@ -653,6 +762,7 @@ local function RegisterEvents()
     if S.Get("queueHighlight") and #queueSpells > 0 then
         events:RegisterEvent("ACTIONBAR_UPDATE_STATE")
     end
+    if SealsOn() then events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player") end
     if S.Get("targetSwing") then
         events:RegisterUnitEvent("UNIT_COMBAT", "player", "target")
         -- A duel starting, a mob turning hostile, or the target dying.
@@ -677,6 +787,7 @@ local function Apply()
     unlocked = unlockActive and On() == true
     if not (On() or unlocked) then
         events:UnregisterAllEvents()
+        SetSeal(false)
         if frame then
             for i = 1, #rows do
                 if rows[i].live then IdleRow(rows[i]) end
@@ -693,6 +804,7 @@ local function Apply()
     frame.mover:SetShown(unlocked == true)
     queued = false
     PaintQueue()
+    ReadSeal()
     RefreshRows()
     Style()
     if unlocked then
@@ -842,6 +954,25 @@ function ns.BuildSwingTimerPage(parent, y)
         ColorRow("queueColor", "Heroic Strike / Maul / Raptor Strike", "queueHighlight"),
         ColorRow("cleaveColor", "Cleave", "queueHighlight")
     ); y = y - h
+
+    if select(2, UnitClass("player")) == "PALADIN" then
+        _, h = W:SectionHeader(parent, "SEALS", y); y = y - h
+        _, h = W:Feature(parent, y,
+            S.Toggle("sealColors", "Color by Active Seal",
+                "While a Seal is up, the melee bars take its color, over Class Colors and Apply "
+                .. "Theme to Bar Colours. It follows your Seal casts and counts each seal's 30 "
+                .. "seconds, so a twist or a seal running out shows at once, in combat too; your "
+                .. "buffs are checked as well when the game lets addons read them, which is out "
+                .. "of combat.", "enabled")
+        ); y = y - h
+        for i = 1, #SEAL_SPELLS, 2 do
+            local left, right = SEAL_SPELLS[i], SEAL_SPELLS[i + 1]
+            _, h = W:DualRow(parent, y,
+                ColorRow(left.key, left.text, "sealColors"),
+                right and ColorRow(right.key, right.text, "sealColors") or { type = "label", text = "" }
+            ); y = y - h
+        end
+    end
     return y
 end
 
