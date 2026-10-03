@@ -39,6 +39,22 @@ ns.MacroSettings = S
 
 local HEALTH_ORDER_VALUES = { stone = "Healthstone First", potion = "Potion First" }
 local HEALTH_ORDER_ORDER = { "stone", "potion" }
+-- The Consumable Bar's Health cog sets the same priority.
+ns.HealthOrderChoices = { values = HEALTH_ORDER_VALUES, order = HEALTH_ORDER_ORDER }
+
+-- The consumable macros the Consumable Bar can carry. Its button runs the macro itself by
+-- name, so this module's rewrite is the only thing that keeps the item current.
+ns.ConsumableMacros = {
+    health = { label = "Health", name = "NF Health", icon = 134829 },
+    mana = { label = "Mana Potion", name = "NF Mana", icon = 134855 },
+    food = { label = "Food & Drink", name = "NF Food", icon = 133971 },
+    bandage = { label = "Bandage", name = "NF Bandage", icon = 133682 },
+}
+
+-- A macro the bar uses stays, and is kept current, whatever its switch or the module's.
+local function UsedByBar(key)
+    return ns.ConsumableBarUsesMacro ~= nil and ns.ConsumableBarUsesMacro(key)
+end
 
 local MARKER_VALUES = { [1] = "Star", [2] = "Circle", [3] = "Diamond", [4] = "Triangle",
     [5] = "Moon", [6] = "Square", [7] = "Cross", [8] = "Skull" }
@@ -46,11 +62,16 @@ local MARKER_ORDER = { 8, 7, 6, 5, 4, 3, 2, 1 }
 local ACCEPT_ICON = 136814  -- the ready check mark
 
 local function MacroIcon(key, text, tooltip)
+    if ns.ConsumableMacros[key] then
+        tooltip = tooltip .. " The Consumable Bar can carry it too; while it does, the macro stays."
+        -- The page is drawn again when the bar changes, so the label follows it.
+        if UsedByBar(key) then text = text .. " (Used by Consumable Bar)" end
+    end
     return { type = "iconbutton", text = text,
         tooltip = tooltip .. " Right-click to remove the macro.",
         icon = ({ health = 134829, mana = 134855, food = 133971, bandage = 133682,
             trinket1 = 134400, trinket2 = 134400, focus = 132212, acceptPopup = ACCEPT_ICON })[key],
-        active = function() return S.Get(key) == true end,
+        active = function() return S.Get(key) == true or UsedByBar(key) end,
         onClick = function() ns.PickupManagedMacro(key) end,
         onRightClick = function() ns.RemoveManagedMacro(key) end }
 end
@@ -252,6 +273,22 @@ function ns.BuildMacroConsumablesPage(parent, y)
             "Bandages yourself with the best bandage in your bags."),
         { type = "label", text = "" }
     ); y = y - h
+    local barUsesAny = false
+    for _, key in ipairs({ "health", "mana", "food", "bandage" }) do
+        barUsesAny = barUsesAny or UsedByBar(key)
+    end
+    if barUsesAny then
+        _, h = W:DualRow(parent, y,
+            { type = "button", text = "Consumable Bar", buttonText = "Options",
+                tooltip = "The macros marked Used by Consumable Bar stay on while the bar uses them. "
+                    .. "Take them off the bar in QoL > Loot & Items.",
+                onClick = function()
+                    UI.GoToSetting("QoL/Loot & Items", "Health",
+                        "QoL/Loot & Items:QoL/Loot & Items:Consumable Bar:macros")
+                end },
+            { type = "label", text = "" }
+        ); y = y - h
+    end
 
     _, h = W:SectionHeader(parent, "FOOD & DRINK BAR" .. STATUS.untested, y); y = y - h
     _, h = W:Feature(parent, y,
@@ -326,6 +363,7 @@ local MACROS = {
 local ready, pending
 local warnedFull = {}
 local toDelete = {}
+local barOnly = {}  -- macros written only because the bar uses them, removed when it stops
 
 local function FirstCarried(list)
     for _, id in ipairs(list) do
@@ -428,17 +466,21 @@ local function Update()
     pending = false
     local on = S.Get("enabled")
     for _, m in ipairs(MACROS) do
-        if on and S.Get(m.key) then
+        local wanted = on and S.Get(m.key)
+        if wanted or UsedByBar(m.key) then
             toDelete[m.name] = nil
+            barOnly[m.name] = not wanted or nil
             local body = BODIES[m.key]()
             if body then Write(m, body) end
-        elseif toDelete[m.name] then
-            toDelete[m.name] = nil
+        elseif toDelete[m.name] or barOnly[m.name] then
+            toDelete[m.name], barOnly[m.name] = nil, nil
             local index = GetMacroIndexByName(m.name)
             if index > 0 then DeleteMacro(index) end
         end
     end
 end
+-- The bar calls this when what it uses changes.
+ns.UpdateManagedMacros = function() Update() end
 
 function ns.PickupManagedMacro(key)
     if InCombatLockdown() then ns.Print("Move macros outside combat.") return end
@@ -458,6 +500,11 @@ end
 
 function ns.RemoveManagedMacro(key)
     if InCombatLockdown() then ns.Print("Remove macros outside combat.") return end
+    if UsedByBar(key) then
+        ns.Print(ns.ConsumableMacros[key].name .. " is on the Consumable Bar. Take it off the bar first "
+            .. "(QoL > Loot & Items).")
+        return
+    end
     if not S.Get(key) then return end
     S.Set(key, false)
     if UI.RefreshPage then UI:RefreshPage(true) end

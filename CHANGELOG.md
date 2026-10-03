@@ -130,6 +130,7 @@
 - Professions: Shift-Click Searches AH (off by default). While the auction house is open,
   Shift-click a recipe or a reagent and the search for the item runs straight away; while
   you type in chat, it still links it.
+- QoL > Loot & Items: Consumable Bar (off by default). Clicable consumable bar with extra customisation options.
 - Settings: six color chips beside the Theme dropdown preview the selected theme's colors before you reload.
 - Professions: Buy at Vendor (Buying and Selling, off by default). At a merchant, "- [1] +
   Buy" under the chosen recipe's reagents buys every checked reagent the merchant sells for

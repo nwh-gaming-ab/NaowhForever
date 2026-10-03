@@ -228,6 +228,46 @@ do
     Check("unchanged body not rewritten", after, before)
 end
 
+-- The Consumable Bar runs these macros by name: one it uses is written and kept current
+-- whatever its switch or the module's, and cannot be removed from here.
+do
+    local t = Fixture({ settings = { enabled = false }, bags = { 5509 } })
+    local used = {}
+    t.ns.ConsumableBarUsesMacro = function(key) return used[key] == true end
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("nothing written with the module off", #t.macros, 0)
+    used.health = true
+    t.ns.UpdateManagedMacros()
+    Check("a macro the bar uses is written anyway", t.Body("NF Health"), "#showtooltip\n/use item:5509")
+    t.Bags({ 929 })
+    t.Fire("BAG_UPDATE_DELAYED")
+    Check("and kept current", t.Body("NF Health"), "#showtooltip\n/use item:929")
+    used.health = nil
+    t.ns.UpdateManagedMacros()
+    Check("written only for the bar, it goes when the bar stops using it", t.Body("NF Health"), nil)
+    Check("the bar's macros are this module's", t.ns.ConsumableMacros.health.name, "NF Health")
+end
+
+do
+    local t = Fixture({ settings = { health = true }, bags = { 5509 } })
+    local used = { health = true }
+    t.ns.ConsumableBarUsesMacro = function(key) return used[key] == true end
+    t.Fire("PLAYER_ENTERING_WORLD")
+    t.ns.RemoveManagedMacro("health")
+    Check("right-click cannot remove a macro the bar uses", t.Body("NF Health"), "#showtooltip\n/use item:5509")
+    Check("it says why", (t.printed[#t.printed] or ""):find("Consumable Bar") ~= nil, true)
+    t.Set("health", false)
+    Check("switching it off keeps it while the bar uses it", t.Body("NF Health"), "#showtooltip\n/use item:5509")
+    t.Set("enabled", false)
+    Check("so does switching the module off", t.Body("NF Health"), "#showtooltip\n/use item:5509")
+    t.Set("enabled", true)
+    t.Set("health", true)
+    used.health = nil
+    t.ns.UpdateManagedMacros()
+    Check("one you switched on yourself stays when the bar stops using it", t.Body("NF Health"),
+        "#showtooltip\n/use item:5509")
+end
+
 -- Turning a macro or the module off deletes it.
 do
     local t = Fixture({ settings = { trinket1 = true, trinket2 = true }, bags = {} })
